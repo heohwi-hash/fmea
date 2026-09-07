@@ -20,6 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const faqList = document.getElementById("faqList");
   const clearChatBtn = document.getElementById("clearChatBtn");
   const themeToggleBtn = document.getElementById("themeToggleBtn");
+  const fontSizeToggleBtn = document.getElementById("fontSizeToggleBtn");
+  const fontSizeLabel = document.getElementById("fontSizeLabel");
 
   // Modals DOM
   const calcModal = document.getElementById("calcModal");
@@ -53,8 +55,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let isBotTyping = false;
   let isComposing = false; // 한글 조합 상태 추적
 
-  // 1. 테마 초기화 (Dark / Light)
+  // 1. 테마 및 글자 크기 초기화
   initTheme();
+  initFontSize();
 
   // 2. UI 요소 초기화
   initSidebar();
@@ -523,6 +526,43 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       themeToggleBtn.innerHTML = `<span>🌙</span><span>다크 모드</span>`;
       themeToggleBtn.title = "어두운 테마로 변경";
+    }
+  }
+
+  // 글자 크기 제어 (보통: 16px / 조금 크게(기본): 17.5px / 크게: 19.5px)
+  function initFontSize() {
+    const savedFontSize = localStorage.getItem("fmea_font_size") || "medium";
+    applyFontSize(savedFontSize);
+
+    if (fontSizeToggleBtn) {
+      fontSizeToggleBtn.addEventListener("click", () => {
+        const currentSize = document.documentElement.getAttribute("data-font-size") || "medium";
+        let nextSize = "medium";
+        if (currentSize === "medium") {
+          nextSize = "large"; // 19.5px (더 크게)
+        } else if (currentSize === "large") {
+          nextSize = "normal"; // 16px (보통)
+        } else {
+          nextSize = "medium"; // 17.5px (조금 크게)
+        }
+        applyFontSize(nextSize);
+        localStorage.setItem("fmea_font_size", nextSize);
+      });
+    }
+  }
+
+  function applyFontSize(size) {
+    document.documentElement.setAttribute("data-font-size", size);
+    if (!fontSizeLabel) return;
+    if (size === "normal") {
+      fontSizeLabel.textContent = "글자: 보통";
+      if (fontSizeToggleBtn) fontSizeToggleBtn.title = "현재: 보통 (클릭 시 조금 크게 변경)";
+    } else if (size === "large") {
+      fontSizeLabel.textContent = "글자: 크게";
+      if (fontSizeToggleBtn) fontSizeToggleBtn.title = "현재: 크게 (클릭 시 보통으로 변경)";
+    } else {
+      fontSizeLabel.textContent = "글자: 조금 크게";
+      if (fontSizeToggleBtn) fontSizeToggleBtn.title = "현재: 조금 크게 (클릭 시 더 크게 변경)";
     }
   }
 
