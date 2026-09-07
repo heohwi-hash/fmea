@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FMEA 이론 전문가 챗봇 | AIAG-VDA 통합 FMEA 가이드</title>
+  <meta name="description" content="AIAG-VDA 최신 7단계 FMEA 표준, DFMEA, PFMEA, S/O/D 평가 지표 및 AP(Action Priority) 계산을 지원하는 FMEA 이론 전문 챗봇 웹 애플리케이션입니다.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Ambient background glow effects -->
+  <div class="ambient-glow-1"></div>
+  <div class="ambient-glow-2"></div>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1>FMEA Guru</h1>
+            <span class="badge-version">AIAG-VDA 1st Ed.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-scroll">
+        <!-- Quick Tools Section -->
+        <div>
+          <div class="sidebar-section-title">인터랙티브 분석 도구</div>
+          <div class="quick-tools-grid">
+            <button type="button" class="tool-card-btn" id="openCalcBtn">
+              <span class="tool-icon">🧮</span>
+              <span class="tool-title">AP & RPN 계산기</span>
+              <span class="tool-desc">S, O, D 등급 실시간 판정</span>
+            </button>
+            <button type="button" class="tool-card-btn" id="openRoadmapBtn">
+              <span class="tool-icon">🧭</span>
+              <span class="tool-title">7단계 로드맵</span>
+              <span class="tool-desc">AIAG-VDA 표준 치트시트</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- FMEA Core Topics Section -->
+        <div>
+          <div class="sidebar-section-title">FMEA 핵심 학습 토픽</div>
+          <div class="topic-list" id="topicList">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </div>
+
+        <!-- Quick FAQs Section -->
+        <div>
+          <div class="sidebar-section-title">자주 묻는 질문 (FAQ)</div>
+          <div class="topic-list" id="faqList">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button type="button" class="clear-btn" id="clearChatBtn" title="대화 내역 초기화">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          대화 내역 비우기
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Chat Content -->
+    <main class="chat-main">
+      <!-- Topbar Header -->
+      <header class="chat-topbar">
+        <div class="topbar-left">
+          <button type="button" class="mobile-menu-btn" id="mobileMenuToggle" aria-label="메뉴 열기">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <div class="status-indicator">
+            <span class="status-dot"></span>
+            <span>FMEA 이론 AI 상담 엔진 온라인</span>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="pill-btn" id="topbarCalcBtn">
+            <span>🧮 AP 계산기</span>
+          </button>
+          <button type="button" class="pill-btn" id="topbarRoadmapBtn">
+            <span>🧭 7단계 치트시트</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Message Stream -->
+      <div class="chat-stream-container" id="chatStream">
+        <!-- Hero Box will be here initially -->
+        <div class="welcome-hero" id="welcomeHero">
+          <div class="hero-badge">AIAG-VDA 표준 기반 FMEA 지능형 어시스턴트</div>
+          <h2>FMEA의 모든 이론과 실무 표준</h2>
+          <p>
+            고장 형태 및 영향 분석(FMEA)의 기본 개념, AIAG-VDA 최신 7단계 절차, DFMEA/PFMEA 차이점, 
+            S·O·D 평가 기준, 그리고 RPN에서 AP(Action Priority)로의 전환 배경까지 무엇이든 질문해 보세요.
+          </p>
+
+          <div class="quick-prompts-label">⚡ 빠른 질문 시작하기</div>
+          <div class="quick-chips-grid" id="quickChipsContainer">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <!-- Chat messages appended here -->
+      </div>
+
+      <!-- Bottom Chat Input Bar -->
+      <footer class="chat-input-wrapper">
+        <form class="chat-input-box" id="chatForm">
+          <textarea 
+            id="userInput" 
+            class="chat-textarea" 
+            placeholder="FMEA에 대해 질문하거나 'S=9, O=4, D=3' 처럼 입력해보세요..." 
+            rows="1"
+            autocomplete="off"
+          ></textarea>
+          <button type="submit" class="send-btn" id="sendBtn" title="질문 전송" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </form>
+        <div class="input-helper-text">
+          <span>Enter: 전송 | Shift + Enter: 줄바꿈 | 오프라인 독립 구동 웹앱</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Modal 1: Interactive AP & RPN Calculator -->
+  <div class="modal-overlay" id="calcModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🧮 AIAG-VDA 표준 AP & RPN 계산기</h3>
+        <button type="button" class="modal-close-btn" id="closeCalcModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="calc-sliders-grid">
+          <!-- Severity Slider -->
+          <div class="calc-slider-card">
+            <div class="slider-top-row">
+              <span class="slider-title">S (심각도, Severity)</span>
+              <span class="slider-val-badge" id="sValDisplay">8</span>
+            </div>
+            <input type="range" min="1" max="10" value="8" class="range-input" id="sInput">
+            <span class="slider-meaning" id="sDesc">차량/시스템의 주요 기능 상실 (심각)</span>
+          </div>
+
+          <!-- Occurrence Slider -->
+          <div class="calc-slider-card">
+            <div class="slider-top-row">
+              <span class="slider-title">O (발생도, Occurrence)</span>
+              <span class="slider-val-badge" id="oValDisplay">4</span>
+            </div>
+            <input type="range" min="1" max="10" value="4" class="range-input" id="oInput">
+            <span class="slider-meaning" id="oDesc">간헐적 발생 가능성 (일반 공정 수준)</span>
+          </div>
+
+          <!-- Detection Slider -->
+          <div class="calc-slider-card">
+            <div class="slider-top-row">
+              <span class="slider-title">D (검출도, Detection)</span>
+              <span class="slider-val-badge" id="dValDisplay">5</span>
+            </div>
+            <input type="range" min="1" max="10" value="5" class="range-input" id="dInput">
+            <span class="slider-meaning" id="dDesc">수동 검사 또는 간접 측정에 의존</span>
+          </div>
+        </div>
+
+        <!-- Real-time Result Box -->
+        <div class="calc-result-box">
+          <div class="result-main-row">
+            <div>
+              <span style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 2px;">조치 우선순위 판정 결과</span>
+              <span class="result-ap-badge badge-high" id="resApBadge">High (H)</span>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 2px;">기존 RPN 산출값</span>
+              <span class="result-rpn-val" id="resRpnVal"><strong>160</strong> (8 × 4 × 5)</span>
+            </div>
+          </div>
+          <div class="result-action-guideline" id="resActionGuide">
+            반드시 예방(발생도 저감) 또는 검출 대책을 수립하고 실행해야 합니다. 개선 조치를 취하지 않을 경우 경영진의 특별 승인 및 사유 문서화가 요구됩니다.
+          </div>
+        </div>
+
+        <div class="calc-modal-actions">
+          <button type="button" class="btn-primary" id="insertCalcToChatBtn">
+            💬 이 결과를 채팅창에 질문/전송하기
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: 7-Step Roadmap Cheat Sheet -->
+  <div class="modal-overlay" id="roadmapModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🧭 AIAG-VDA 통합 FMEA 7단계 로드맵 치트시트</h3>
+        <button type="button" class="modal-close-btn" id="closeRoadmapModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="roadmap-timeline">
+          <!-- Step 1 -->
+          <div class="roadmap-step">
+            <div class="step-number-circle">1</div>
+            <div class="step-content-card">
+              <div class="step-card-header">
+                <span class="step-title">Step 1: 기획 및 준비 (Planning & Preparation)</span>
+                <span class="step-group-badge">시스템 분석</span>
+              </div>
+              <p class="step-desc">프로젝트 범위 설정, 경계 다이어그램(Boundary Diagram), 5T(팀/일정/목적/도구/업무) 수립</p>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="roadmap-step">
+            <div class="step-number-circle">2</div>
+            <div class="step-content-card">
+              <div class="step-card-header">
+                <span class="step-title">Step 2: 구조 분석 (Structure Analysis)</span>
+                <span class="step-group-badge">시스템 분석</span>
+              </div>
+              <p class="step-desc">상위 요소 - 포커스 요소 - 하위 요소(DFMEA: 부품 / PFMEA: 4M)의 계층 트리 분해</p>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="roadmap-step">
+            <div class="step-number-circle">3</div>
+            <div class="step-content-card">
+              <div class="step-card-header">
+                <span class="step-title">Step 3: 기능 분석 (Function Analysis)</span>
+                <span class="step-group-badge">시스템 분석</span>
+              </div>
+              <p class="step-desc">각 구조 요소의 의도된 기능과 성능 요구사항 정의, P-Diagram 작성 및 기능 넷 연결</p>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="roadmap-step">
+            <div class="step-number-circle">4</div>
+            <div class="step-content-card">
+              <div class="step-card-header">
+                <span class="step-title">Step 4: 고장 분석 (Failure Analysis)</span>
+                <span class="step-group-badge">고장 분석 및 위험 경감</span>
+              </div>
+              <p class="step-desc">고장 영향(FE, 심각도 평가) - 고장 형태(FM) - 고장 원인(FC, 발생도 평가)의 체인 연결</p>
+            </div>
+          </div>
+
+          <!-- Step 5 -->
+          <div class="roadmap-step">
+            <div class="step-number-circle">5</div>
+            <div class="step-content-card">
+              <div class="step-card-header">
+                <span class="step-title">Step 5: 위험 분석 (Risk Analysis)</span>
+                <span class="step-group-badge">고장 분석 및 위험 경감</span>
+              </div>
+              <p class="step-desc">현재 예방/검출 관리 평가, S/O/D 채점 및 AIAG-VDA 공식 AP(High, Medium, Low) 매트릭스 도출</p>
+            </div>
+          </div>
+
+          <!-- Step 6 -->
+          <div class="roadmap-step">
+            <div class="step-number-circle">6</div>
+            <div class="step-content-card">
+              <div class="step-card-header">
+                <span class="step-title">Step 6: 최적화 (Optimization)</span>
+                <span class="step-group-badge">고장 분석 및 위험 경감</span>
+              </div>
+              <p class="step-desc">AP High/Medium 항목에 대한 예방/검출 대책 수립, 담당자 및 일정 지정, 조치 후 재평가</p>
+            </div>
+          </div>
+
+          <!-- Step 7 -->
+          <div class="roadmap-step">
+            <div class="step-number-circle">7</div>
+            <div class="step-content-card">
+              <div class="step-card-header">
+                <span class="step-title">Step 7: 결과 문서화 (Results Documentation)</span>
+                <span class="step-group-badge">위험 커뮤니케이션</span>
+              </div>
+              <p class="step-desc">FMEA 결과 요약 보고서 작성, 경영진 잔류 리스크 승인, 사내 교훈(Lessons Learned) 자산화</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/fmea-knowledge.js"></script>
+  <script src="js/calculator.js"></script>
+  <script src="js/chat-engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
