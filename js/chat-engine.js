@@ -20,7 +20,7 @@ class FMEAChatEngine {
 
   /**
    * S, O, D 계산 질의 패턴 감지
-   * 예: "S=9, O=4, D=3", "심각도 9 발생도 4 검출도 2", "S:9 O:3 D:4" 등
+   * 예: "S=9, O=4, D=3", "심각도 9 발생도 4 검출도 2", "S:9 O:3 D:4", "s9 o4 d3" 등
    */
   detectCalculationIntent(text) {
     const raw = text.toUpperCase();
@@ -60,11 +60,11 @@ class FMEAChatEngine {
       const oDesc = FMEACalculator.getOccurrenceDesc(calc.o);
       const dDesc = FMEACalculator.getDetectionDesc(calc.d);
 
-      const responseText = `### 🧮 AIAG-VDA AP(조치우선순위) & RPN 판정 결과
+      const responseText = `### 🧮 AIAG-VDA 공식 AP(조치우선순위) & RPN 평가 결과
 
-입력하신 **S(심각도)=${calc.s}**, **O(발생도)=${calc.o}**, **D(검출도)=${calc.d}**에 대한 공식 평가 결과입니다.
+입력하신 **S(심각도)=${calc.s}**, **O(발생도)=${calc.o}**, **D(검출도)=${calc.d}**에 대한 분석 결과입니다.
 
-| 지표 | 입력 점수 | 점수 의미 요약 |
+| 평가 지표 | 입력 점수 | 점수 의미 요약 |
 | :--- | :---: | :--- |
 | **S (심각도)** | **${calc.s}** / 10 | ${sDesc} |
 | **O (발생도)** | **${calc.o}** / 10 | ${oDesc} |
@@ -72,14 +72,14 @@ class FMEAChatEngine {
 
 ---
 
-#### 🏆 판정 등급: **${result.label}**
+#### 🏆 판정 결과: **${result.label}**
 * **공식 AP 등급**: **[ ${result.ap} ]** (${result.description})
 * **기존 RPN 산출값**: **${result.rpn}** ($S \\times O \\times D = ${calc.s} \\times ${calc.o} \\times ${calc.d}$)
 
 ---
 
 #### 📋 권장 개선 조치 가이드라인
-> ${result.action}
+> **${result.action}**
 
 💡 **참고**: AP(Action Priority)는 과거 RPN과 달리 심각도(S)에 가장 높은 가중치를 두어 판정합니다. 추가 계산을 원하시면 상단 메뉴의 **'AP 계산기'** 도구를 활용해보세요!`;
 
@@ -103,9 +103,9 @@ class FMEAChatEngine {
       for (const kw of item.keywords) {
         const normKw = this.normalize(kw);
         if (normalizedInput === normKw) {
-          score += 100;
+          score += 120;
         } else if (normalizedInput.includes(normKw)) {
-          score += 30 + normKw.length * 2;
+          score += 35 + normKw.length * 2;
         }
       }
 
@@ -114,14 +114,14 @@ class FMEAChatEngine {
         if (token.length < 2) continue;
         for (const kw of item.keywords) {
           if (kw.includes(token)) {
-            score += 10;
+            score += 12;
           }
         }
         if (item.title.toLowerCase().includes(token)) {
-          score += 15;
+          score += 18;
         }
         if (item.category.toLowerCase().includes(token)) {
-          score += 5;
+          score += 6;
         }
       }
 
@@ -132,7 +132,7 @@ class FMEAChatEngine {
     }
 
     // 신뢰도 임계치 검사
-    if (bestItem && highestScore >= 15) {
+    if (bestItem && highestScore >= 12) {
       return {
         text: bestItem.response,
         followUps: bestItem.followUps || QUICK_QUESTIONS.slice(0, 3)
@@ -140,17 +140,17 @@ class FMEAChatEngine {
     }
 
     // 3. Fallback (일치 항목이 애매한 경우 친절한 안내)
-    const fallbackText = `### 🤔 질문하신 내용을 FMEA 지식베이스에서 찾는 중입니다
+    const fallbackText = `### 🤔 질문하신 내용을 FMEA 지식베이스에서 확인하고 있습니다
 
 정확한 답변을 위해 아래의 주요 FMEA 핵심 토픽 중에서 원하시는 주제를 선택하시거나, 질문을 조금 더 구체적으로 입력해 주시겠어요?
 
-#### 💡 추천 질문 리스트
-* **FMEA 개요**: "FMEA가 뭐야?", "FMEA 목적과 필요성"
+#### 💡 대표 학습 토픽
+* **FMEA 개요 및 정의**: "FMEA가 뭐야?", "FMEA 목적과 효과"
 * **AIAG-VDA 7단계**: "7단계 절차 알려줘", "Step 1 기획", "Step 4 고장 분석"
 * **평가 지표**: "RPN과 AP 차이가 뭐야?", "S O D 평가 기준"
 * **종류 비교**: "DFMEA와 PFMEA 비교", "SFMEA나 FMEA-MSR은 뭐야?"
 * **실전 예시**: "고장 체인 작성 예시 보여줘"
-* **AP 계산**: 채팅창에 \`S=9, O=4, D=3\` 형식으로 입력하시면 즉시 AP 등급을 판정해 드립니다!`;
+* **실시간 계산**: \`S=9, O=4, D=3\` 처럼 입력하시면 즉시 AP 등급과 RPN을 계산해 드립니다!`;
 
     return {
       text: fallbackText,
@@ -164,7 +164,7 @@ class FMEAChatEngine {
   }
 
   /**
-   * 마크다운 텍스트를 안전한 HTML로 변환하는 경량 파서
+   * 마크다운 텍스트를 현대적이고 안전한 HTML로 변환
    */
   formatMarkdown(md) {
     if (!md) return "";
@@ -175,6 +175,10 @@ class FMEAChatEngine {
     html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
       return `<pre class="code-block"><code>${this.escapeHtml(code.trim())}</code></pre>`;
     });
+
+    // 수식 블록 ($$...$$ 및 $...$)
+    html = html.replace(/\$\$(.*?)\$\$/g, '<div class="formula-block">$1</div>');
+    html = html.replace(/\$(.*?)\$/g, '<span class="inline-formula">$1</span>');
 
     // 헤딩 (###, ####)
     html = html.replace(/^### (.*$)/gim, '<h3 class="chat-heading-3">$1</h3>');
@@ -207,7 +211,7 @@ class FMEAChatEngine {
 
     // 뱃지 강조 (예: [S = 9], [H])
     html = html.replace(/\[\s*(S\s*=\s*\d+|O\s*=\s*\d+|D\s*=\s*\d+)\s*\]/g, '<span class="score-pill">$1</span>');
-    html = html.replace(/\[\s*(AP\s*=\s*High\s*\(H\)|AP\s*=\s*Medium\s*\(M\)|AP\s*=\s*Low\s*\(L\))\s*\]/g, '<span class="badge-ap">$1</span>');
+    html = html.replace(/\[\s*(AP\s*=\s*High\s*\(H\)|AP\s*=\s*Medium\s*\(M\)|AP\s*=\s*Low\s*\(L\)|H|M|L)\s*\]/g, '<span class="badge-ap">$1</span>');
 
     return html;
   }
@@ -218,9 +222,6 @@ class FMEAChatEngine {
     return div.innerHTML;
   }
 
-  /**
-   * 간단한 마크다운 테이블 파서
-   */
   parseMarkdownTable(text) {
     const tableRegex = /\|(.+)\|[\r\n]+\|([-: ]+\|)+[\r\n]+((\|.+[\r\n]+)+)/g;
     return text.replace(tableRegex, (match) => {

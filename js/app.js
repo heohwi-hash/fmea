@@ -1,5 +1,9 @@
 /**
  * FMEA Guru Application Main Script
+ * - 완벽한 한국어 IME (한글 조합) 및 Enter 전송 처리
+ * - 다크 / 라이트 테마 토글 지원
+ * - 대화 내역 영구 보존 및 복사 기능
+ * - 인터랙티브 AP/RPN 계산기 및 7단계 로드맵 연동
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -15,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const topicList = document.getElementById("topicList");
   const faqList = document.getElementById("faqList");
   const clearChatBtn = document.getElementById("clearChatBtn");
+  const themeToggleBtn = document.getElementById("themeToggleBtn");
 
   // Modals DOM
   const calcModal = document.getElementById("calcModal");
@@ -46,114 +51,132 @@ document.addEventListener("DOMContentLoaded", () => {
   const mobileMenuToggle = document.getElementById("mobileMenuToggle");
 
   let isBotTyping = false;
-  let activeTypingTimer = null;
+  let isComposing = false; // 한글 조합 상태 추적
 
-  // 1. Initialize UI Elements
+  // 1. 테마 초기화 (Dark / Light)
+  initTheme();
+
+  // 2. UI 요소 초기화
   initSidebar();
   initQuickChips();
+  initFeatureCards();
+  initInputShortcuts();
   loadChatHistory();
   updateCalculatorUI();
 
-  // 2. Sidebar Population
-  function initSidebar() {
-    // Topic List
-    topicList.innerHTML = "";
-    FMEA_KNOWLEDGE_BASE.forEach((item) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "topic-item";
-      btn.innerHTML = `<span class="topic-dot"></span><span>${item.title}</span>`;
-      btn.addEventListener("click", () => {
-        handleUserSubmit(item.title);
-        closeMobileSidebar();
-      });
-      topicList.appendChild(btn);
-    });
+  // ==========================================
+  // [중요] 전송 및 입력 처리 (Enter & Click)
+  // ==========================================
 
-    // FAQs List
-    faqList.innerHTML = "";
-    QUICK_QUESTIONS.forEach((q) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "topic-item";
-      btn.innerHTML = `<span style="font-size: 0.8rem; color: var(--accent-indigo);">💬</span><span>${q}</span>`;
-      btn.addEventListener("click", () => {
-        handleUserSubmit(q);
-        closeMobileSidebar();
-      });
-      faqList.appendChild(btn);
-    });
+  function submitCurrentMessage() {
+    if (isBotTyping) return;
+    const text = userInput.value.trim();
+    if (!text) {
+      userInput.focus();
+      return;
+    }
+
+    // 입력창 초기화
+    userInput.value = "";
+    userInput.style.height = "auto";
+    updateSendButtonState();
+
+    // 메시지 처리
+    handleUserSubmit(text);
   }
 
-  // 3. Quick Chips in Welcome Hero
-  function initQuickChips() {
-    quickChipsContainer.innerHTML = "";
-    QUICK_QUESTIONS.forEach((q) => {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "quick-chip";
-      chip.innerHTML = `<span>⚡</span><span>${q}</span>`;
-      chip.addEventListener("click", () => {
-        handleUserSubmit(q);
-      });
-      quickChipsContainer.appendChild(chip);
-    });
-  }
-
-  // 4. Input handling & Textarea auto-resize
-  userInput.addEventListener("input", () => {
-    userInput.style.height = "24px";
-    userInput.style.height = Math.min(userInput.scrollHeight, 140) + "px";
-    sendBtn.disabled = userInput.value.trim().length === 0 || isBotTyping;
+  // 한글 IME 조합 이벤트
+  userInput.addEventListener("compositionstart", () => {
+    isComposing = true;
   });
 
+  userInput.addEventListener("compositionend", () => {
+    isComposing = false;
+    updateSendButtonState();
+  });
+
+  // 키보드 엔터 감지 (한글 조합 완료 및 즉시 전송 보장)
   userInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (!sendBtn.disabled && !isBotTyping) {
-        chatForm.dispatchEvent(new Event("submit"));
+      // 한글 조합 중인 경우: 조합이 브라우저에서 확정된 직후 전송되도록 setTimeout 활용
+      if (isComposing || e.isComposing || e.keyCode === 229) {
+        setTimeout(() => {
+          submitCurrentMessage();
+        }, 30);
+        return;
       }
+      e.preventDefault();
+      submitCurrentMessage();
     }
   });
 
-  chatForm.addEventListener("submit", (e) => {
+  // 전송 버튼 클릭
+  sendBtn.addEventListener("click", (e) => {
     e.preventDefault();
-    const text = userInput.value.trim();
-    if (!text || isBotTyping) return;
-
-    userInput.value = "";
-    userInput.style.height = "24px";
-    sendBtn.disabled = true;
-
-    handleUserSubmit(text);
+    submitCurrentMessage();
   });
 
-  // 5. Message Processing
+  // 폼 서브밋 방지 및 처리
+  chatForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    submitCurrentMessage();
+  });
+
+  // 입력창 높이 자동 조절 및 전송 버튼 활성화
+  userInput.addEventListener("input", () => {
+    userInput.style.height = "auto";
+    userInput.style.height = Math.min(userInput.scrollHeight, 130) + "px";
+    updateSendButtonState();
+  });
+
+  function updateSendButtonState() {
+    const hasText = userInput.value.trim().length > 0;
+    if (hasText && !isBotTyping) {
+      sendBtn.classList.add("active");
+    } else {
+      sendBtn.classList.remove("active");
+    }
+  }
+
+  // ==========================================
+  // 대화 스트림 처리
+  // ==========================================
+
   function handleUserSubmit(queryText) {
     if (isBotTyping) return;
 
-    // Remove welcome hero if present
-    if (welcomeHero && welcomeHero.parentNode) {
+    // 첫 질문 시 웰컴 히어로 숨김
+    if (welcomeHero && welcomeHero.style.display !== "none") {
       welcomeHero.style.display = "none";
     }
 
-    // Append user message
+    // 사용자 메시지 버블 추가
     appendMessage("user", queryText);
 
-    // Bot Typing Indicator
+    // 봇 응답 로딩 표시
     isBotTyping = true;
-    sendBtn.disabled = true;
+    updateSendButtonState();
     const botRow = appendBotTypingPlaceholder();
 
-    // Process Query through Chat Engine
+    // 챗 엔진 처리 (부드러운 응답 딜레이)
     setTimeout(() => {
-      const responseObj = engine.processQuery(queryText);
-      renderBotResponse(botRow, responseObj);
-      saveChatHistory();
-    }, 450);
+      try {
+        const responseObj = engine.processQuery(queryText);
+        renderBotResponse(botRow, responseObj);
+        saveChatHistory();
+      } catch (err) {
+        console.error("Query processing error:", err);
+        renderBotResponse(botRow, {
+          text: `오류가 발생했습니다: ${err.message}`,
+          followUps: QUICK_QUESTIONS.slice(0, 3)
+        });
+      } finally {
+        isBotTyping = false;
+        updateSendButtonState();
+      }
+    }, 400);
   }
 
-  // 6. DOM Message Creation
   function appendMessage(sender, text) {
     const row = document.createElement("div");
     row.className = `message-row ${sender}`;
@@ -167,7 +190,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const senderTitle = document.createElement("div");
     senderTitle.className = "msg-sender";
-    senderTitle.innerText = sender === "user" ? "사용자" : "FMEA AI 전문가";
+    senderTitle.innerHTML = sender === "user" 
+      ? `<span>나</span>` 
+      : `<span>FMEA 전문 어시스턴트</span><span class="sender-badge">AIAG-VDA 1st Ed.</span>`;
 
     const bubble = document.createElement("div");
     bubble.className = "msg-bubble";
@@ -201,16 +226,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const senderTitle = document.createElement("div");
     senderTitle.className = "msg-sender";
-    senderTitle.innerText = "FMEA AI 전문가";
+    senderTitle.innerHTML = `<span>FMEA 전문 어시스턴트</span><span class="sender-badge">분석 중...</span>`;
 
     const bubble = document.createElement("div");
-    bubble.className = "msg-bubble";
+    bubble.className = "msg-bubble typing-bubble";
     bubble.innerHTML = `
       <div class="typing-indicator">
         <span class="typing-dot"></span>
         <span class="typing-dot"></span>
         <span class="typing-dot"></span>
       </div>
+      <span class="typing-text">FMEA 표준 지식 베이스 검색 중...</span>
     `;
 
     wrap.appendChild(senderTitle);
@@ -226,58 +252,62 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderBotResponse(botRow, responseObj) {
     const bubble = botRow.querySelector(".msg-bubble");
     const wrap = botRow.querySelector(".msg-bubble-wrap");
-    const fullHtml = engine.formatMarkdown(responseObj.text);
+    const senderTitle = botRow.querySelector(".msg-sender");
+    
+    senderTitle.innerHTML = `<span>FMEA 전문 어시스턴트</span><span class="sender-badge">AIAG-VDA 1st Ed.</span>`;
+    bubble.classList.remove("typing-bubble");
+    bubble.innerHTML = engine.formatMarkdown(responseObj.text);
 
-    // Direct render with smooth fade
-    bubble.innerHTML = fullHtml;
-    isBotTyping = false;
-    sendBtn.disabled = userInput.value.trim().length === 0;
-
-    // Add Message Actions (Copy button)
+    // 액션 바 (복사, 도움됨 반응)
     const actionsDiv = document.createElement("div");
     actionsDiv.className = "msg-actions";
     
     const copyBtn = document.createElement("button");
     copyBtn.type = "button";
     copyBtn.className = "msg-action-btn";
-    copyBtn.innerHTML = `
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-      </svg>
-      답변 복사
-    `;
+    copyBtn.innerHTML = `📋 답변 복사`;
     copyBtn.addEventListener("click", () => {
       navigator.clipboard.writeText(responseObj.text).then(() => {
         copyBtn.classList.add("copied");
         copyBtn.innerText = "✓ 복사 완료!";
         setTimeout(() => {
           copyBtn.classList.remove("copied");
-          copyBtn.innerHTML = `
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-            답변 복사
-          `;
+          copyBtn.innerHTML = `📋 답변 복사`;
         }, 2000);
       });
     });
     actionsDiv.appendChild(copyBtn);
+
+    const helpfulBtn = document.createElement("button");
+    helpfulBtn.type = "button";
+    helpfulBtn.className = "msg-action-btn";
+    helpfulBtn.innerHTML = `👍 도움됨`;
+    helpfulBtn.addEventListener("click", () => {
+      helpfulBtn.classList.add("helpful");
+      helpfulBtn.innerHTML = `❤️ 피드백 감사합니다!`;
+      helpfulBtn.disabled = true;
+    });
+    actionsDiv.appendChild(helpfulBtn);
+
     wrap.appendChild(actionsDiv);
 
-    // Add Follow-up recommendation chips
+    // 후속 추천 질문 칩
     if (responseObj.followUps && responseObj.followUps.length > 0) {
       const followUpsDiv = document.createElement("div");
       followUpsDiv.className = "followups-container";
       
+      const followUpTitle = document.createElement("div");
+      followUpTitle.className = "followup-header";
+      followUpTitle.innerText = "💡 관련 추천 질문:";
+      followUpsDiv.appendChild(followUpTitle);
+
       responseObj.followUps.forEach((item) => {
         const chip = document.createElement("button");
         chip.type = "button";
         chip.className = "followup-chip";
-        chip.innerHTML = `<span>💡</span><span>${item}</span>`;
+        chip.innerHTML = `<span>⚡</span><span>${item}</span>`;
         chip.addEventListener("click", () => {
-          if (item === "AP 계산기 열기" || item === "AP 계산기 사용해보기" || item === "AP 계산기 직접 사용해보기") {
+          if (item.includes("AP 계산기")) {
             openCalculatorModal();
           } else {
             handleUserSubmit(item);
@@ -295,7 +325,84 @@ document.addEventListener("DOMContentLoaded", () => {
     chatStream.scrollTop = chatStream.scrollHeight;
   }
 
-  // 7. Modals Logic
+  // ==========================================
+  // 사이드바 & 퀵 질문 렌더링
+  // ==========================================
+
+  function initSidebar() {
+    topicList.innerHTML = "";
+    FMEA_KNOWLEDGE_BASE.forEach((item) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "topic-item";
+      btn.innerHTML = `<span class="topic-dot"></span><span class="topic-text">${item.title}</span>`;
+      btn.addEventListener("click", () => {
+        handleUserSubmit(item.title);
+        closeMobileSidebar();
+      });
+      topicList.appendChild(btn);
+    });
+
+    faqList.innerHTML = "";
+    QUICK_QUESTIONS.forEach((q) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "topic-item";
+      btn.innerHTML = `<span class="topic-icon">💬</span><span class="topic-text">${q}</span>`;
+      btn.addEventListener("click", () => {
+        handleUserSubmit(q);
+        closeMobileSidebar();
+      });
+      faqList.appendChild(btn);
+    });
+  }
+
+  function initQuickChips() {
+    quickChipsContainer.innerHTML = "";
+    QUICK_QUESTIONS.forEach((q) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "quick-chip";
+      chip.innerHTML = `<span>⚡</span><span>${q}</span>`;
+      chip.addEventListener("click", () => {
+        handleUserSubmit(q);
+      });
+      quickChipsContainer.appendChild(chip);
+    });
+  }
+
+  function initFeatureCards() {
+    document.querySelectorAll(".feature-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const query = card.getAttribute("data-query");
+        if (query) {
+          handleUserSubmit(query);
+        }
+      });
+    });
+  }
+
+  function initInputShortcuts() {
+    document.querySelectorAll(".input-shortcut-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const query = chip.getAttribute("data-query");
+        if (query) {
+          if (query === "open_calc") {
+            openCalculatorModal();
+          } else if (query === "open_roadmap") {
+            openRoadmap();
+          } else {
+            handleUserSubmit(query);
+          }
+        }
+      });
+    });
+  }
+
+  // ==========================================
+  // 모달 제어 (AP 계산기 & 7단계 로드맵)
+  // ==========================================
+
   function openCalculatorModal() {
     calcModal.classList.add("active");
   }
@@ -311,14 +418,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   openCalcBtn.addEventListener("click", openCalculatorModal);
-  topbarCalcBtn.addEventListener("click", openCalculatorModal);
+  if (topbarCalcBtn) topbarCalcBtn.addEventListener("click", openCalculatorModal);
   closeCalcModal.addEventListener("click", closeCalculatorModal);
 
   openRoadmapBtn.addEventListener("click", openRoadmap);
-  topbarRoadmapBtn.addEventListener("click", openRoadmap);
+  if (topbarRoadmapBtn) topbarRoadmapBtn.addEventListener("click", openRoadmap);
   closeRoadmapModal.addEventListener("click", closeRoadmap);
 
-  // Close modals on overlay click
   calcModal.addEventListener("click", (e) => {
     if (e.target === calcModal) closeCalculatorModal();
   });
@@ -326,9 +432,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target === roadmapModal) closeRoadmap();
   });
 
-  // Roadmap Step Click to Query
+  // 로드맵 단계 클릭 시 해당 단계 질문 전송
   document.querySelectorAll(".roadmap-step").forEach((stepEl, idx) => {
-    stepEl.style.cursor = "pointer";
     stepEl.addEventListener("click", () => {
       closeRoadmap();
       const stepQueries = [
@@ -344,7 +449,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Calculator Real-time update
+  // AP 계산기 실시간 반영
   function updateCalculatorUI() {
     const s = parseInt(sInput.value, 10);
     const o = parseInt(oInput.value, 10);
@@ -378,7 +483,10 @@ document.addEventListener("DOMContentLoaded", () => {
     handleUserSubmit(`S=${s}, O=${o}, D=${d}`);
   });
 
-  // 8. Mobile Sidebar Controls
+  // ==========================================
+  // 모바일 사이드바 & 테마 제어
+  // ==========================================
+
   if (mobileMenuToggle) {
     mobileMenuToggle.addEventListener("click", () => {
       sidebar.classList.toggle("open");
@@ -391,7 +499,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 9. Clear Chat
+  function initTheme() {
+    const savedTheme = localStorage.getItem("fmea_theme") || "dark";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+    updateThemeToggleLabel(savedTheme);
+
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener("click", () => {
+        const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+        const newTheme = currentTheme === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", newTheme);
+        localStorage.setItem("fmea_theme", newTheme);
+        updateThemeToggleLabel(newTheme);
+      });
+    }
+  }
+
+  function updateThemeToggleLabel(theme) {
+    if (!themeToggleBtn) return;
+    if (theme === "dark") {
+      themeToggleBtn.innerHTML = `<span>☀️</span><span>라이트 모드</span>`;
+      themeToggleBtn.title = "밝은 테마로 변경";
+    } else {
+      themeToggleBtn.innerHTML = `<span>🌙</span><span>다크 모드</span>`;
+      themeToggleBtn.title = "어두운 테마로 변경";
+    }
+  }
+
+  // 대화 기록 초기화
   clearChatBtn.addEventListener("click", () => {
     if (confirm("대화 내역을 모두 지우고 초기화하시겠습니까?")) {
       localStorage.removeItem("fmea_chat_history");
@@ -399,7 +534,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // 10. Persistence
+  // 로컬스토리지 대화 기록 저장/불러오기
   function saveChatHistory() {
     const rows = chatStream.querySelectorAll(".message-row");
     const history = [];
@@ -414,9 +549,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
     try {
-      localStorage.setItem("fmea_chat_history", JSON.stringify(history.slice(-20)));
+      localStorage.setItem("fmea_chat_history", JSON.stringify(history.slice(-25)));
     } catch (e) {
-      // Storage quota exceeded or disabled
+      // ignore
     }
   }
 
@@ -440,7 +575,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const senderTitle = document.createElement("div");
           senderTitle.className = "msg-sender";
-          senderTitle.innerText = item.sender === "user" ? "사용자" : "FMEA AI 전문가";
+          senderTitle.innerHTML = item.sender === "user" 
+            ? `<span>나</span>` 
+            : `<span>FMEA 전문 어시스턴트</span><span class="sender-badge">AIAG-VDA 1st Ed.</span>`;
 
           const bubble = document.createElement("div");
           bubble.className = "msg-bubble";
@@ -456,7 +593,7 @@ document.addEventListener("DOMContentLoaded", () => {
         scrollToBottom();
       }
     } catch (e) {
-      console.warn("Failed to load history", e);
+      console.warn("History loading error", e);
     }
   }
 });
